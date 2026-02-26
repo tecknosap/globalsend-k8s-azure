@@ -1,0 +1,1 @@
+# globalsend-k8s-azure
