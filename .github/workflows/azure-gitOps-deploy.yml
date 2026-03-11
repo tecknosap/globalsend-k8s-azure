@@ -1,0 +1,74 @@
+name: Azure GitOps Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'staging' && 'staging' || 'dev' }}
+
+    steps:
+      # Checkout repo
+      - uses: actions/checkout@v3
+
+      # Azure login
+      - name: Azure Login
+        uses: azure/login@v1.6.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Terraform: create infra
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Init & Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve -var="environment=${{ github.ref_name }}"
+
+      # Wait for resources
+      - name: Wait for Azure resources
+        run: sleep 20
+
+      # Get AKS credentials
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group gocloud-${{ github.ref_name }}-rg \
+            --name gocloud-${{ github.ref_name }}-aks \
+            --overwrite-existing
+
+      # Install Argo CD via Helm
+      - name: Install Argo CD
+        run: |
+          kubectl create namespace argocd || true
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd --namespace argocd --set server.service.type=LoadBalancer
+
+      # Wait for Argo CD
+      - name: Wait for Argo CD
+        run: |
+          kubectl rollout status deployment/argocd-server -n argocd --timeout=120s
+
+      # Sync Argo CD app (Helm chart pulls Docker image)
+      - name: Sync Argo CD Application
+        run: |
+          PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 --decode)
+          ARGOCD_SERVER=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          argocd login $ARGOCD_SERVER --username admin --password $PASSWORD --insecure
+          argocd app sync globalsend-site

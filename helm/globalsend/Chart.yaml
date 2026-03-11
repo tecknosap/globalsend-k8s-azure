@@ -1,0 +1,4 @@
+apiVersion: v2
+name: globalsend-site
+description: Helm chart for tecknosap/globalsend-site Docker image
+version: 0.1.0 
