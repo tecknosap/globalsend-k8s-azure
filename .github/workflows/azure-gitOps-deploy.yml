@@ -13,7 +13,7 @@ permissions:
 jobs:
   terraform-deploy:
     runs-on: ubuntu-latest
-    environment: dev  # must match the Azure federated credential
+    environment: dev  # must match Azure federated credential
 
     steps:
       # 1️⃣ Checkout code
@@ -53,7 +53,7 @@ jobs:
         run: |
           cd terraform
           terraform init
-          terraform apply -auto-approve -var="environment=dev"
+          terraform apply -auto-approve
 
       # 7️⃣ Wait for AKS cluster readiness
       - name: Wait for AKS to be ready
