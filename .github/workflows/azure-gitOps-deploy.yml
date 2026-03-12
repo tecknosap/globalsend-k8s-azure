@@ -141,7 +141,7 @@ jobs:
         run: |
           az aks get-credentials \
             --resource-group gocloud-dev-rg \
-            --name gocloud-dev-aks-clu \
+            --name gocloud-dev-aks-cluster \
             --overwrite-existing
 
       # 9️⃣ Setup Helm
