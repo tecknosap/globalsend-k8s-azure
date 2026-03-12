@@ -16,7 +16,7 @@ variable "location" {
 variable "aks_cluster_name" {
   description = "The name of the AKS cluster"
   type        = string
-  default = "gocloud-dev-aks-cluster"
+  default = "gocloud-dev-aks"
 }
 
 
