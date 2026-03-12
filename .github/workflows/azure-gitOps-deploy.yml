@@ -154,7 +154,9 @@ jobs:
           kubectl create namespace argocd || true
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
-          helm upgrade --install argocd argo/argo-cd --namespace argocd --set server.service.type=LoadBalancer
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --set server.service.type=LoadBalancer
 
       # 1️⃣1️⃣ Wait for ArgoCD server rollout
       - name: Wait for ArgoCD server
@@ -164,7 +166,8 @@ jobs:
       # 1️⃣2️⃣ Install ArgoCD CLI safely
       - name: Install ArgoCD CLI
         run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          curl -sSL -o /usr/local/bin/argocd \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           sudo chmod +x /usr/local/bin/argocd
 
       # 1️⃣3️⃣ Sync ArgoCD application (pulls DockerHub image)
