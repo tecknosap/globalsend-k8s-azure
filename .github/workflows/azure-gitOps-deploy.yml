@@ -133,7 +133,7 @@ jobs:
           az aks wait \
             --name gocloud-dev-aks-cluster \
             --resource-group gocloud-dev-rg \
-            --created
+            --created \
             --verbose
 
       # 8️⃣ Get AKS credentials
