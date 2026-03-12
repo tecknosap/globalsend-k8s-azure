@@ -72,7 +72,7 @@
 #             --overwrite-existing
 
 name: "Dev Pipeline: Terraform + AKS + ArgoCD"
-
+#####
 on:
   push:
     branches:
@@ -97,7 +97,6 @@ jobs:
         run: |
           echo "Branch: ${{ github.ref_name }}"
           echo "Environment: ${{ github.environment }}"
-
       # 3️⃣ Login to Azure using OIDC
       - name: Azure Login (OIDC)
         uses: azure/login@v1.6.1
@@ -113,7 +112,6 @@ jobs:
           echo "ARM_TENANT_ID=${{ secrets.DEV_AZURE_TENANT_ID }}" >> $GITHUB_ENV
           echo "ARM_SUBSCRIPTION_ID=${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
-
       # 5️⃣ Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -126,24 +124,20 @@ jobs:
           cd terraform
           terraform init
           terraform apply -auto-approve
-
       # 7️⃣ Wait for AKS cluster to be ready
       - name: Wait for AKS readiness
         run: |
           az aks wait \
-            --name gocloud-dev-aks-cluster \
+            --name gocloud-dev-aks \
             --resource-group gocloud-dev-rg \
-            --created \
-            --verbose
-
+            --created
       # 8️⃣ Get AKS credentials
       - name: Get AKS credentials
         run: |
           az aks get-credentials \
             --resource-group gocloud-dev-rg \
-            --name gocloud-dev-aks-cluster \
+            --name gocloud-dev-aks \
             --overwrite-existing
-
       # 9️⃣ Setup Helm
       - name: Setup Helm
         uses: azure/setup-helm@v3
@@ -154,22 +148,16 @@ jobs:
           kubectl create namespace argocd || true
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
-          helm upgrade --install argocd argo/argo-cd \
-            --namespace argocd \
-            --set server.service.type=LoadBalancer
-
+          helm upgrade --install argocd argo/argo-cd --namespace argocd --set server.service.type=LoadBalancer
       # 1️⃣1️⃣ Wait for ArgoCD server rollout
       - name: Wait for ArgoCD server
         run: |
           kubectl rollout status deployment/argocd-server -n argocd --timeout=180s
-
       # 1️⃣2️⃣ Install ArgoCD CLI safely
       - name: Install ArgoCD CLI
         run: |
-          curl -sSL -o /usr/local/bin/argocd \
-            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           sudo chmod +x /usr/local/bin/argocd
-
       # 1️⃣3️⃣ Sync ArgoCD application (pulls DockerHub image)
       - name: Sync ArgoCD Application
         run: |
