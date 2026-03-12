@@ -2,7 +2,7 @@
 variable "resource_group_name" {
   description = "The name of the resource group"
   type        = string
-  default = "gocloud-dev-rg"
+  default = "gocloudops-dev-rg"
 }
 
 variable "location" {
@@ -16,7 +16,7 @@ variable "location" {
 variable "aks_cluster_name" {
   description = "The name of the AKS cluster"
   type        = string
-  default = "gocloud-dev-aks"
+  default = "gocloudops-dev-aks-cluster"
 }
 
 
@@ -24,27 +24,27 @@ variable "aks_cluster_name" {
 variable "vnet_name" {
   description = "The name of the virtual network"
   type        = string
-  default = "gocloud-dev-vnet"
+  default = "gocloudops-dev-vnet"
 
 }
 
 variable "address_space" { 
   description = "The address space for the virtual network"
   type        = list(string)
-  default = [ "10.0.0.0/16" ]
+  default = [ "10.0.1.0/16" ]
   
 }
 
 variable "subnet_name" {
   description = "The name of the subnet"
   type        = string
-    default     = "gocloud-dev-subnet"
+    default     = "gocloudops-dev-subnet"
 }
 
 variable "subnet_address_prefix" {
   description = "The address prefix for the subnet"
   type        = string
-  default     = "10.0.0.0/24"
+  default     = "10.0.1.0/24"
 }
     
 variable "subscription_id" {

@@ -8,14 +8,14 @@ spec:
   source:
     repoURL: 'https://github.com/tecknosap/globalsend-k8s-azure'
     targetRevision: main
-    path: helm/globalsend-site
+    path: helm/globalsend      # <-- corrected path
     helm:
       valueFiles:
         - values.yaml
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: default
+    namespace: globalsend-site
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true
+
