@@ -1,4 +1,4 @@
-name: Terraform Deploy
+name: Terraform Deploy (Dev)
 
 on:
   push:
@@ -13,34 +13,57 @@ permissions:
 jobs:
   terraform-deploy:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: dev  # must match the Azure federated credential
 
     steps:
-      - uses: actions/checkout@v3
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Login to Azure
+      # 2️⃣ Debug branch/env
+      - name: Debug info
+        run: |
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Environment: ${{ github.environment }}"
+
+      # 3️⃣ Login to Azure using OIDC
+      - name: Login to Azure (OIDC)
         uses: azure/login@v1.6.1
         with:
           client-id: ${{ secrets.DEV_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.DEV_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set Terraform OIDC vars
+      # 4️⃣ Export ARM_* variables for Terraform
+      - name: Set Terraform OIDC env vars
         run: |
           echo "ARM_CLIENT_ID=${{ secrets.DEV_AZURE_CLIENT_ID }}" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=${{ secrets.DEV_AZURE_TENANT_ID }}" >> $GITHUB_ENV
           echo "ARM_SUBSCRIPTION_ID=${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
 
+      # 5️⃣ Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
 
-      - name: Deploy Infra
+      # 6️⃣ Deploy infrastructure
+      - name: Terraform Init & Apply
         run: |
           cd terraform
           terraform init
           terraform apply -auto-approve -var="environment=dev"
 
+      # 7️⃣ Wait for AKS cluster readiness
+      - name: Wait for AKS to be ready
+        run: |
+          az aks wait \
+            --name gocloud-dev-aks \
+            --resource-group gocloud-dev-rg \
+            --created
+
+      # 8️⃣ Get AKS credentials
       - name: Get AKS credentials
         run: |
           az aks get-credentials \
