@@ -131,16 +131,17 @@ jobs:
       - name: Wait for AKS readiness
         run: |
           az aks wait \
-            --name gocloud-dev-aks \
+            --name gocloud-dev-aks-cluster \
             --resource-group gocloud-dev-rg \
             --created
+            --verbose
 
       # 8️⃣ Get AKS credentials
       - name: Get AKS credentials
         run: |
           az aks get-credentials \
             --resource-group gocloud-dev-rg \
-            --name gocloud-dev-aks \
+            --name gocloud-dev-aks-clu \
             --overwrite-existing
 
       # 9️⃣ Setup Helm
