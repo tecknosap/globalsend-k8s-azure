@@ -1,5 +1,220 @@
-name: Terraform Deploy
-####
+# name: Terraform Deploy (Dev)
+
+# on:
+#   push:
+#     branches:
+#       - dev
+#   workflow_dispatch:
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   terraform-deploy:
+#     runs-on: ubuntu-latest
+#     environment: dev  # must match Azure federated credential
+
+#     steps:
+#       # 1️⃣ Checkout code
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       # 2️⃣ Debug branch/env
+#       - name: Debug info
+#         run: |
+#           echo "Branch: ${{ github.ref_name }}"
+#           echo "Environment: ${{ github.environment }}"
+
+#       # 3️⃣ Login to Azure using OIDC
+#       - name: Login to Azure (OIDC)
+#         uses: azure/login@v1.6.1
+#         with:
+#           client-id: ${{ secrets.DEV_AZURE_CLIENT_ID }}
+#           tenant-id: ${{ secrets.DEV_AZURE_TENANT_ID }}
+#           subscription-id: ${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}
+
+#       # 4️⃣ Export ARM_* variables for Terraform
+#       - name: Set Terraform OIDC env vars
+#         run: |
+#           echo "ARM_CLIENT_ID=${{ secrets.DEV_AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+#           echo "ARM_TENANT_ID=${{ secrets.DEV_AZURE_TENANT_ID }}" >> $GITHUB_ENV
+#           echo "ARM_SUBSCRIPTION_ID=${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+#           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
+
+#       # 5️⃣ Setup Terraform
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v2
+#         with:
+#           terraform_version: 1.6.0
+
+#       # 6️⃣ Deploy infrastructure
+#       - name: Terraform Init & Apply
+#         run: |
+#           cd terraform
+#           terraform init
+#           terraform apply -auto-approve
+
+#       # 7️⃣ Wait for AKS cluster readiness
+#       - name: Wait for AKS to be ready
+#         run: |
+#           az aks wait \
+#             --name gocloud-dev-aks \
+#             --resource-group gocloud-dev-rg \
+#             --created
+
+#       # 8️⃣ Get AKS credentials
+#       - name: Get AKS credentials
+#         run: |
+#           az aks get-credentials \
+#             --resource-group gocloud-dev-rg \
+#             --name gocloud-dev-aks \
+#             --overwrite-existing
+
+# name: "Dev Pipeline: Terraform + AKS + ArgoCD"
+# #####
+# on:
+#   push:
+#     branches:
+#       - dev
+#   workflow_dispatch:
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   dev-deploy:
+#     runs-on: ubuntu-latest
+#     environment: dev
+
+#     steps:
+#       # 1️⃣ Checkout code
+#       - uses: actions/checkout@v3
+
+#       # 2️⃣ Debug info
+#       - name: Debug info
+#         run: |
+#           echo "Branch: ${{ github.ref_name }}"
+#           echo "Environment: ${{ github.environment }}"
+          
+#       # 3️⃣ Login to Azure using OIDC
+#       - name: Azure Login (OIDC)
+#         uses: azure/login@v1.6.1
+#         with:
+#           client-id: ${{ secrets.DEV_AZURE_CLIENT_ID }}
+#           tenant-id: ${{ secrets.DEV_AZURE_TENANT_ID }}
+#           subscription-id: ${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}
+
+#       # 4️⃣ Set Terraform env vars
+#       - name: Terraform OIDC environment variables
+#         run: |
+#           echo "ARM_CLIENT_ID=${{ secrets.DEV_AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+#           echo "ARM_TENANT_ID=${{ secrets.DEV_AZURE_TENANT_ID }}" >> $GITHUB_ENV
+#           echo "ARM_SUBSCRIPTION_ID=${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+#           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
+          
+#       # 5️⃣ Setup Terraform
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v2
+#         with:
+#           terraform_version: 1.6.0
+
+#       # 6️⃣ Deploy infra
+#       - name: Terraform Init & Apply
+#         run: |
+#           cd terraform
+#           terraform init
+#           terraform apply -auto-approve
+          
+#       # 7️⃣ Wait for AKS cluster to be ready
+#       - name: Wait for AKS readiness
+#         run: |
+#           az aks wait \
+#             --name gocloud-dev-aks \
+#             --resource-group gocloud-dev-rg \
+#             --created
+            
+#       # 8️⃣ Get AKS credentials
+#       - name: Get AKS credentials
+#         run: |
+#           az aks get-credentials \
+#             --resource-group gocloud-dev-rg \
+#             --name gocloud-dev-aks \
+#             --overwrite-existing
+            
+#       # 9️⃣ Setup Helm
+#       - name: Setup Helm
+#         uses: azure/setup-helm@v3
+
+#       # 🔟 Install ArgoCD into AKS via Helm
+#       - name: Install ArgoCD
+#         run: |
+#           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+#           helm repo add argo https://argoproj.github.io/argo-helm
+#           helm repo update
+#           helm upgrade --install argocd argo/argo-cd \
+#             --namespace argocd \
+#             --set server.service.type=LoadBalancer \
+#             --wait
+          
+#       # 1️⃣1️⃣ Wait for ArgoCD server rollout
+#       - name: Wait for ArgoCD server
+#         run: |
+#           kubectl rollout status deployment/argocd-server -n argocd --timeout=180s
+#           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+          
+#       # 1️⃣2️⃣ Create application namespace
+#       - name: Create app namespace
+#         run: |
+#           kubectl create namespace globalsend-site --dry-run=client -o yaml | kubectl apply -f -
+          
+#       # 1️⃣3️⃣ Apply ArgoCD Application manifest
+#       - name: Deploy ArgoCD Application
+#         run: |
+#           # Option A: If you have application.yaml file in your repo
+#           kubectl apply -f application.yaml -n argocd
+          
+#           # OR Option B: Inline the manifest (if you don't have the file)
+#           # cat <<EOF | kubectl apply -f -
+#           # apiVersion: argoproj.io/v1alpha1
+#           # kind: Application
+#           # metadata:
+#           #   name: globalsend-site
+#           #   namespace: argocd
+#           # spec:
+#           #   project: default
+#           #   source:
+#           #     repoURL: https://github.com/tecknosap/globalsend-k8s-azure
+#           #     targetRevision: main
+#           #     path: helm/globalsend
+#           #     helm:
+#           #       valueFiles:
+#           #         - values.yaml
+#           #   destination:
+#           #     server: https://kubernetes.default.svc
+#           #     namespace: globalsend-site
+#           #   syncPolicy:
+#           #     automated:
+#           #       prune: true
+#           #       selfHeal: true
+#           #     syncOptions:
+#           #       - CreateNamespace=true
+#           # EOF
+          
+#       # 1️⃣4️⃣ Verify application was created
+#       - name: Verify Application
+#         run: |
+#           echo "Application status:"
+#           kubectl get application -n argocd globalsend-site
+#           echo "Waiting for ArgoCD to auto-sync (30 seconds)..."
+#           sleep 30
+#           kubectl get application -n argocd globalsend-site -o wide
+
+
+
+name: "Dev Pipeline: Terraform + AKS + ArgoCD"
+
 on:
   push:
     branches:
@@ -11,39 +226,116 @@ permissions:
   contents: read
 
 jobs:
-  terraform-deploy:
+  dev-deploy:
     runs-on: ubuntu-latest
     environment: dev
 
     steps:
-      - uses: actions/checkout@v3
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Login to Azure
+      # 2️⃣ Debug info
+      - name: Debug info
+        run: |
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Environment: ${{ github.environment }}"
+          
+      # 3️⃣ Login to Azure using OIDC
+      - name: Azure Login (OIDC)
         uses: azure/login@v1.6.1
         with:
           client-id: ${{ secrets.DEV_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.DEV_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set Terraform OIDC vars
+      # 4️⃣ Set Terraform env vars
+      - name: Terraform OIDC environment variables
         run: |
           echo "ARM_CLIENT_ID=${{ secrets.DEV_AZURE_CLIENT_ID }}" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=${{ secrets.DEV_AZURE_TENANT_ID }}" >> $GITHUB_ENV
           echo "ARM_SUBSCRIPTION_ID=${{ secrets.DEV_AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
-
+          
+      # 5️⃣ Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
 
-      - name: Deploy Infra
+      # 6️⃣ Deploy infrastructure with Terraform
+      - name: Terraform Init & Apply
         run: |
           cd terraform
           terraform init
-          terraform apply -auto-approve -var="environment=dev"
-
+          terraform apply -auto-approve
+          
+      # 7️⃣ Wait for AKS cluster to be ready
+      - name: Wait for AKS readiness
+        run: |
+          az aks wait \
+            --name gocloud-dev-aks \
+            --resource-group gocloud-dev-rg \
+            --created
+          sleep 30
+          
+      # 8️⃣ Get AKS credentials
       - name: Get AKS credentials
         run: |
           az aks get-credentials \
             --resource-group gocloud-dev-rg \
             --name gocloud-dev-aks \
             --overwrite-existing
+          
+      # 9️⃣ Verify AKS connection
+      - name: Verify AKS connection
+        run: kubectl get nodes
+          
+      # 🔟 Setup Helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      # 1️⃣1️⃣ Install ArgoCD into AKS via Helm
+      - name: Install ArgoCD
+        run: |
+          kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --set server.service.type=LoadBalancer \
+            --wait \
+            --timeout 5m
+          
+      # 1️⃣2️⃣ Wait for ArgoCD components
+      - name: Wait for ArgoCD readiness
+        run: |
+          kubectl rollout status deployment/argocd-server -n argocd --timeout=180s
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=120s
+          sleep 20
+          
+      # 1️⃣3️⃣ Create application namespace
+      - name: Create app namespace
+        run: |
+          kubectl create namespace globalsend-site --dry-run=client -o yaml | kubectl apply -f -
+          
+      # 1️⃣4️⃣ Apply ArgoCD Application manifest (FIXED PATH)
+      - name: Deploy ArgoCD Application
+        run: |
+          kubectl apply -f argocd/application.yaml -n argocd
+          
+      # 1️⃣5️⃣ Verify application deployment
+      - name: Verify Application
+        run: |
+          echo "📋 Application status:"
+          kubectl get application -n argocd globalsend-site
+          echo ""
+          echo "⏳ Waiting for ArgoCD to auto-sync (60 seconds)..."
+          sleep 60
+          echo ""
+          echo "✅ Final application status:"
+          kubectl get application -n argocd globalsend-site -o wide
+          echo ""
+          echo "📦 Pods in globalsend-site namespace:"
+          kubectl get pods -n globalsend-site || echo "No pods yet - still syncing"
